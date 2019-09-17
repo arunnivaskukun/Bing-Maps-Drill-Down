@@ -1,0 +1,83 @@
+﻿.mapContainer {
+    position: relative;
+    width: 800px;
+    height: 600px;
+}
+
+#myMap {
+    position: relative;
+    width: 800px;
+    height: 600px;
+}
+
+.legend {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 256px;
+    height: 35px;
+    font-family: Arial;
+    font-size: 12px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 5px;
+    padding: 5px;
+}
+
+#legendCanvas {
+    width: 256px;
+    height: 15px;
+}
+
+.legend-max {
+    float: right;
+}
+.tooltiptext {
+    background-color: black;
+    color: #fff;
+    padding: 10px;
+    text-align: left;
+    border-radius: 4px;
+    font-family: Verdana;
+    font-size: small;
+    resize: both;
+    overflow: auto;
+    
+    /*border: 2px solid;
+    padding: 20px;
+    width: 300px;
+    resize: both;
+    overflow: auto;*/
+}
+
+.ButtonDrillUp {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+  
+}
+
+.NameLable {
+    position: absolute;
+    top: 10px;
+    left: 260px;
+    overflow: visible !important;
+}
+
+
+/* TEST */
+
+/* Allow div of pushpin to display overflowing content */
+.labelPin {
+    overflow: visible !important;
+}
+
+    /* Hide the default pushpin, Alternatively point the icon property of the pushpin to a transparent image 
+    .labelPin img {
+        display: none;
+    }*/
+
+    /*Use this to style the text
+    .labelPin div {
+        white-space: nowrap;
+        color: blue !important;
+    } */
