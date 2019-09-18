@@ -1,0 +1,672 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta charset="utf-8" />
+    <script src="DataController.js"></script>
+
+    <link href="MapStyle.css" rel="stylesheet" />
+
+    <script type='text/javascript'>
+        /// <reference path="./packages/Microsoft.BingMaps.V8.TypeScript.2.0.3/content/types/MicrosoftMaps/Microsoft.Maps.All.d.ts" /> #
+
+        var sdsStateDataSourceUrl = 'https://spatial.virtualearth.net/REST/v1/data/755aa60032b24cb1bfb54e8a6d59c229/USCensus2010_States/States';
+        var sdsCountyDatasourceUrl = 'https://spatial.virtualearth.net/REST/v1/data/6c39d83e5812459f914832970618048e/USCensus2010_Counties/Counties';
+        var sdsZipDataSourceUrl = 'https://spatial.virtualearth.net/REST/v1/data/f42cab32d0ee41738d90856badd638d3/USCensus2010_ZCTA5/ZCTA5';
+
+        var map, maxPopulation = 1000000, heatGradientData;
+        var StateMaxCount = 1000000, CountyMaxCount = 10000, ZipMaxCount = 1000;
+        var valueType = "Permits:";
+        var selectedState, selectedCounty, selectedZip;
+
+        var tooltip;
+        // var tooltipTemplate = '<div style="background-color:white;height:20px;width:150px;padding:5px;text-align:center"><b>{title}</b></div>';
+        var tooltipTemplate = '<div class="tooltiptext">{title}</div>';
+
+        function GetMap() {
+            var bounds = new Microsoft.Maps.LocationRect.fromLocations(new Microsoft.Maps.Location(53.32, -110.29), new Microsoft.Maps.Location(76.44, -110.29));
+            map = new Microsoft.Maps.Map('#myMap', {
+                //credentials: 'Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO',
+                // center: new Microsoft.Maps.Location(51.86, -120.52),
+                center: new Microsoft.Maps.Location(35.23, -96.71),
+                mapTypeId: Microsoft.Maps.MapTypeId.mercator, //.mercator,
+                zoom: 4,
+                showLocateMeButton: false,
+                showMapTypeSelector: false,
+                //  minZoom: 4,
+                maxZoom: 13
+                
+            });
+
+            Microsoft.Maps.Events.addHandler(map, 'viewchangeend', updateLayerVisibility);
+
+            //Create an infobox to use as a tooltip when hovering.   ***---***
+            tooltip = new Microsoft.Maps.Infobox(map.getCenter(), {
+                visible: false,
+                showPointer: false,
+                showCloseButton: false,
+                offset: new Microsoft.Maps.Point(-75, 10)
+            });
+
+            tooltip.setMap(map);
+
+            //Instead of map.entities can store into the layer too as below
+
+            //Create a layer
+            var layer1 = new Microsoft.Maps.Layer();
+
+            //Add zoom information as metadata of the layer.
+            layer1.metadata = {
+                zoomRange: { min: 1, max: 5 }
+            };
+
+            layer1.setZIndex(10000);
+
+
+            //Create a layer
+            var layer2 = new Microsoft.Maps.Layer();
+
+            //Add zoom information as metadata of the layer.
+            layer2.metadata = {
+                zoomRange: { min: 5, max: 8 }
+            };
+
+            var layer3 = new Microsoft.Maps.Layer();
+            //Add zoom information as metadata of the layer.
+            layer3.metadata = {
+                zoomRange: { min: 8, max: 13 }
+            };
+
+
+            //Create a legend.
+            createLegend(maxPopulation);
+
+            /** STATE START **/
+            //Load the Bing Spatial Data Services module.
+            Microsoft.Maps.loadModule(['Microsoft.Maps.SpatialDataService', 'Microsoft.Maps.SpatialMath'], function () {
+                var worldBounds = Microsoft.Maps.LocationRect.fromEdges(90, -180, -90, 180);
+                //Get all states by doing an intersection test against a bounding box of the world and have up to 52 results returned.
+                var queryOptions = {
+                    queryUrl: sdsStateDataSourceUrl,
+                    spatialFilter: {
+                        spatialFilterType: 'intersects',
+                        intersects: worldBounds,
+                        location: map.getCenter(),
+                        radius: 10
+                    },
+                    top: 52
+                };
+
+
+                Microsoft.Maps.SpatialDataService.QueryAPIManager.search(queryOptions, map, function (data) {
+                    //Loop through results and set the fill color of the polygons based on the population property.
+                    var info = loadJson('state');
+
+                    for (var i = 0; i < data.length; i++) {
+
+
+                        var stateLoc = getDataByLocation((data[i].metadata.Name).toLowerCase(), info, 'state');
+                        var stateCounts = (typeof (stateLoc) != 'undefined') ? stateLoc.CountOfPermit : "0";
+
+                        data[i].jsondata = {
+                            //title: 'Pin Title ' + data[i].metadata.Name,
+                            //description: 'Pin discriptidfgdfgon'
+                            State: data[i].metadata.Name,
+                            CountValue: stateCounts
+                        };
+
+                        data[i].setOptions({
+                            //fillColor: getLegendColor(data[i].metadata.Population, maxPopulation),
+                            fillColor: getLegendColor(data[i].jsondata.CountValue, StateMaxCount),
+                            strokeColor: 'white',
+                            strokeThickness: 1,
+                            strokeDashArray: "1 4 2 1",
+                            //labelColor: "#444444",
+                            //labelOutlineColor: "#60ffffff",
+
+                        });
+
+
+                        //Add a click event to each polygon and display metadata.
+                        Microsoft.Maps.Events.addHandler(data[i], 'dblclick', function (e) { // data[i],
+                            //  alert(e.target.metadata.Name + '\r\nPopulation: ' + e.target.metadata.Population);
+
+                            //alert(info[j].state + '\r\Permit Count: ' + info[j].CountOfPermit);
+                            selectedState = "";
+                            selectedState = e.target.metadata.Name;
+
+                            getCountyBoundary(e.target.metadata.Name);
+
+                            if (map.getZoom() < 6) {
+                                map.setView({
+                                    center: new Microsoft.Maps.Location(e.target.metadata.Latitude, e.target.metadata.Longitude),
+                                    zoom: 6
+                                });//arun
+                            }
+
+                            // map.zoom = 2;
+                        });
+
+                        Microsoft.Maps.Events.addHandler(data[i], 'mouseover', function (e) {
+                            // e.primitive.setOptions({ strokeColor: 'red' });
+                            e.target.setOptions({
+                                // fillColor: 'yellow',
+                                strokeColor: 'grey',
+                                strokeThickness: 3,
+                                strokeDashArray: "0"
+                            });
+                            tooltip.setOptions({
+                                location: e.location,
+                                //       htmlContent: tooltipTemplate.replace('{title}', "State: \t <b>" + e.target.jsondata.State + '</b></br>' + "Permits: <b>" + e.target.jsondata.CountValue + "</b>"),
+
+                                htmlContent: tooltipTemplate.replace('{title}', "<table><tr><td>State:</td><td> \
+                                            <b> "+ e.target.jsondata.State + "</b ></td ></tr > <tr><td>" + valueType + "</td><td><b>" + e.target.jsondata.CountValue + "</b></td></tr></table > "),
+
+                                visible: true
+                            });
+                        }
+                        );
+
+                        Microsoft.Maps.Events.addHandler(data[i], 'mouseout', Hout);
+                        //    function (e) {
+                        //    // e.primitive.setOptions({ strokeColor: 'red' });
+                        //    e.target.setOptions({
+                        //        // fillColor: 'yellow',
+                        //        strokeColor: 'white',
+                        //        strokeThickness: 1
+                        //    });
+                        //});
+
+                     //   addPolygonWithLabel(data[i], data[i].metadata.Name);
+                     //   addPolygonWithLabel(data[i], data[i].metadata.StateCode);
+
+                    }
+
+                    //Add 100 blue pushpins
+                    layer1.add(data);
+                    //map.entities.push(labelPin);
+                    //Add layer to map.
+                    map.layers.insert(layer1);
+                });
+
+                /** STATE END **/
+
+                /** County START **/
+
+                function getCountyBoundary(stateName) {  //Load the Bing Spatial Data Services module.
+                    layer2.clear();
+                    Microsoft.Maps.loadModule('Microsoft.Maps.SpatialDataService', function () {
+                        var worldBounds = Microsoft.Maps.LocationRect.fromEdges(90, -180, -90, 180);
+                        //Get all states by doing an intersection test against a bounding box of the world and have up to 52 results returned.
+                        var queryOptions = {
+                            queryUrl: sdsCountyDatasourceUrl,
+                            inlineCount: true,
+                            skip: 0,
+                            top: 250,
+                            spatialFilter: {
+                                spatialFilterType: 'intersects',
+                                // intersects: map.getBounds()
+                                //   location: map.getCenter()
+                                intersects: worldBounds
+                            },
+                            filter: new Microsoft.Maps.SpatialDataService.Filter('StateName', 'eq', stateName) //Filter to retrieve given state
+                        };
+
+                        QueryDataSource1(queryOptions); //arun
+                    });
+                    function QueryDataSource1(queryOptions) {  // arun
+                        Microsoft.Maps.SpatialDataService.QueryAPIManager.search(queryOptions, map, function (data, inlineCount) {
+                            var info1 = loadJson('county', stateName);
+                            //Loop through results and set the fill color of the polygons based on the population property.
+                            for (var i = 0; i < data.length; i++) {
+
+                                var countyLoc = getDataByLocation((data[i].metadata.Name).toLowerCase(), info1, 'county');
+                                var countyCounts = (typeof (countyLoc) != 'undefined') ? countyLoc.CountOfPermit : "0";
+
+                                data[i].jsondata = {
+                                    //   fillColor: getLegendColor1(data[i].metadata.Population, maxPopulation)
+                                    //    fillColor: getLegendColor1(res1, 100),
+                                    County: data[i].metadata.Name,
+                                    CountValue: countyCounts
+                                };
+
+                                data[i].setOptions({
+                                    //fillColor: getLegendColor(data[i].metadata.Population, maxPopulation),
+                                    fillColor: getLegendColor1(data[i].jsondata.CountValue / CountyMaxCount),
+                                    strokeColor: 'Grey',
+                                    strokeThickness: 1,
+                                    //strokeDashArray: "1 4 2 1"
+                                    //labelColor: "#444444",
+                                    //labelOutlineColor: "#60ffffff",
+                                });
+
+
+                                //Add a click event to each polygon and display metadata.
+                                Microsoft.Maps.Events.addHandler(data[i], 'dblclick', function (e) { // data[i],
+
+                                    if (map.getZoom() < 8) {
+                                        map.setView({
+                                            center: new Microsoft.Maps.Location(e.target.metadata.Latitude, e.target.metadata.Longitude),
+                                            zoom: 10
+                                            //zoom: getZoomLevel(100, e.target.metadata.Latitude, 600, 800)
+                                        });
+                                    }
+                                    selectedCounty = "";
+                                    selectedCounty = e.target.metadata.Name;
+
+                                    getZipBoundary(e.target.geometry.boundingBox);
+                                    //   getZipBoundary(e.target.metadata.Boundary);
+
+                                });
+
+
+                                Microsoft.Maps.Events.addHandler(data[i], 'mouseover', function (e) {
+
+                                    if (e.target.metadata) {
+                                        //Set the infobox options with the metadata of the pushpin.
+                                        tooltip.setOptions({
+                                            location: e.location,
+                                            //  htmlContent: tooltipTemplate.replace('{title}', "State  : <b>" + selectedState + "</b></br> County: <b>" + e.target.jsondata.County + '</b></br>' + "Permits: <b>" + e.target.jsondata.CountValue + "</b>"),
+                                            htmlContent: tooltipTemplate.replace('{title}', "<table ><tr><td>State:</td><td> \
+                                                <b>" + selectedState + "</b></td></tr><tr><td>County:</td><td> <b>" + e.target.jsondata.County + "\
+                                                        </b ></td ></tr > <tr><td>"+ valueType + "</td> <td><b>" + e.target.jsondata.CountValue + "</b></td></tr ></table > "),
+                                            visible: true
+                                        });
+                                        e.target.setOptions({
+                                            // fillColor: 'yellow',
+                                            strokeColor: 'grey',
+                                            strokeThickness: 3,
+                                            strokeDashArray: "0",
+
+                                        });
+                                    }
+                                });
+                                Microsoft.Maps.Events.addHandler(data[i], 'mouseout', function Hout(e) {
+                                    //Close the tooltip and clear its content.
+                                    tooltip.setOptions({ visible: false });
+                                    e.primitive.setOptions({ strokeColor: 'Grey', strokeThickness: 1 });
+                                });
+
+                            }
+                            //Add results to the map.
+                            // map.entities.push(data);
+
+                            //Add County data
+                            layer2.add(data);
+                            //Add layer to map.
+                            map.layers.insert(layer2);
+                            layer1.setVisible(false);
+
+                            //Increase the number of results to skip for the next query.
+                            queryOptions.skip += queryOptions.top; //arun
+                            //Check to see if there is more results to retrieve for this query. inlineCount is the total number of results for the query.
+                            if (queryOptions.skip < inlineCount) {
+                                //Query the next set of results.
+                                QueryDataSource1(queryOptions);
+                            } //---arun
+                        });
+                    }
+                }
+
+            });
+
+            /** County END **/
+
+            /** Zip START **/
+
+
+            function getZipBoundary(countyBounds) {
+                layer3.clear();
+
+                //Load the Bing Spatial Data Services module.
+                Microsoft.Maps.loadModule('Microsoft.Maps.SpatialDataService', function () {
+                    //Create a query to get zip code tabulation areas in view.
+                    //var worldBounds = Microsoft.Maps.LocationRect.fromEdges(90, -180, -90, 180);
+                    var query = {
+                        queryUrl: sdsZipDataSourceUrl,
+                        inlineCount: true,
+                        skip: 0,
+                        top: 250,
+                        spatialFilter: {
+                            spatialFilterType: 'intersects',
+                            intersects: countyBounds
+                            //map.getBounds()
+                            //fromEdges(36.853473, -114.046403, 35.002085, -115.89692500000001) //
+                            // fromEdges(north:number, west:number, south:number, east:number)
+                        }
+                    };
+                    console.log(map.getBounds());
+                    //Trigger an initial search.
+                    QueryDataSource2(query);
+
+                });
+            }
+            function QueryDataSource2(query2) {
+                //Process the query.
+                Microsoft.Maps.SpatialDataService.QueryAPIManager.search(query2, map, function (data, inlineCount) {
+                    var info2 = loadJson('zip');
+
+                    for (var i = 0; i < data.length; i++) {
+
+                        var zipLoc = getDataByLocation((data[i].metadata.Name).toLowerCase(), info2, 'zip');
+                        var zipCounts = (typeof (zipLoc) != 'undefined') ? zipLoc.CountOfPermit : "0";
+
+                        data[i].jsondata = {
+                            //   fillColor: getLegendColor1(data[i].metadata.Population, maxPopulation)
+                            //    fillColor: getLegendColor1(res1, 100),
+                            ZipCode: data[i].metadata.Name,
+                            CountValue: zipCounts
+                        };
+
+                        data[i].setOptions({
+                            //   fillColor: getLegendColor2(data[i].metadata.Population, maxPopulation)
+                            fillColor: getLegendColor2(data[i].jsondata.CountValue / ZipMaxCount),
+                            strokeColor: 'grey',
+                            strokeThickness: 1,
+                            //  strokeDashArray: "1 4 2 1"
+                        });
+                        Microsoft.Maps.Events.addHandler(data[i], 'dblclick', function (e) {
+                            // alert("Zip CODE: " + e.target.metadata.Name + '\r\nPopulation: ' + e.target.metadata.Population);
+                            alert("Reached Maxmium Level");
+                            //var xxx = getDataByLocation((e.target.metadata.Name).toLowerCase(), info2, 'zip');
+                            //if (typeof (xxx) != 'undefined') {
+                            //    alert(xxx.zip_code + '\r\Permit Count: ' + xxx.CountOfPermit); //xxx.state + " " +
+                            //}
+                        });
+
+                        Microsoft.Maps.Events.addHandler(data[i], 'mouseover', function (e) {
+
+                            if (e.target.metadata) {
+                                //Set the infobox options with the metadata of the pushpin.
+                                tooltip.setOptions({
+                                    location: e.location,
+                                    //htmlContent: tooltipTemplate.replace('{title}', "State  : <b>" + selectedState + "</b></br> County: <b>"+ selectedCounty +"</b></br> ZipCode: <b>" + e.target.jsondata.ZipCode + '</b></br>' + "Permits: <b>" + e.target.jsondata.CountValue + "</b>"),
+                                    htmlContent: tooltipTemplate.replace('{title}', "<table ><tr><td>State:</td><td>\
+                                                            <b>" + selectedState + "</b></td></tr><tr><td>County:</td><td> <b>" + selectedCounty + "</b></td></tr><tr><td>Zip:</td><td> <b>" + e.target.jsondata.ZipCode + "</b></td></tr><tr><td>" + valueType + "</td> <td><b>" + e.target.jsondata.CountValue + "</b></td></tr ></table > "),
+
+                                    visible: true
+                                });
+                                e.target.setOptions({
+                                    // fillColor: 'yellow',
+                                    strokeColor: 'red',
+                                    strokeThickness: 2,
+                                    //     strokeDashArray: "0",
+
+                                });
+                            }
+                        });
+                        Microsoft.Maps.Events.addHandler(data[i], 'mouseout', function (e) {
+
+                            tooltip.setOptions({ visible: false });
+                            e.primitive.setOptions({ strokeColor: 'grey', strokeThickness: 1, strokeDashArray: "0" });
+                        });
+
+
+                    }
+
+                    //Add results to the map.
+                    //    map.entities.push(data);
+
+                    layer3.add(data);
+                    //Add layer to map.
+                    map.layers.insert(layer3);
+
+                    layer2.setVisible(false);
+
+                    //Increase the number of results to skip for the next query.
+                    query2.skip += query2.top;
+                    //Check to see if there is more results to retrieve for this query. inlineCount is the total number of results for the query.
+                    if (query2.skip < inlineCount) {
+                        //Query the next set of results.
+                        QueryDataSource2(query2);
+                    }
+                });
+            }
+        }
+
+
+        /** Zip END **/
+
+
+        function addPolygonWithLabel(polygon, label) {
+            //Add the polygon to the map.
+            //    map.entities.push(polygon);
+
+            //Add a click event to the polygon which will remove it from the map.
+            //  Microsoft.Maps.Events.addHandler(polygon, 'click', function (e) { alert(e.target + "working") });
+
+            //Calculate the centroid of the polygon.
+            var centroid = Microsoft.Maps.SpatialMath.Geometry.centroid(polygon);
+
+            //Create a pushpin that has a transparent icon and a title property set to the label value.
+            var labelPin = new Microsoft.Maps.Pushpin(centroid, {
+                // icon: '<xmlns="http://www.w3.org/2000/svg" width="0.1" height="0.1" ></svg>',
+                icon: '<svg xmlns="http://www.w3.org/2000/svg" width="0.1" height="0.1"></svg>',
+                title: label
+            });
+
+            //Store a reference to the label pushpin in the polygon metadata.
+            polygon.metadata1 = { label: labelPin };
+
+            //Add the label pushpin to the map.
+            map.entities.push(labelPin);
+     
+
+        }
+
+        getZoomLevel(100, 36.38302299999998, 600, 800);
+        //  function getZoomLevel(radiusInKilometer: number, latitude: number, heightOfMapInPixels: number, widthOfMapInPixels: number): number {
+        function getZoomLevel(radiusInKilometer, latitude, heightOfMapInPixels, widthOfMapInPixels) {
+            const rangeInMeters = radiusInKilometer * 1000;
+            // we take the lower value of the bounding rect of the map, so the circle will be best seen
+            const limitBoundPixels = Math.min(heightOfMapInPixels, widthOfMapInPixels);
+            const zoom = Math.floor(Math.log(156543.03392 * Math.cos(latitude * Math.PI / 180) / (rangeInMeters / limitBoundPixels)) / Math.log(2));
+            return zoom;
+        }
+
+        function updateLayerVisibility() {
+
+            //console.log(map.getBounds()); //Testing for auto load at county level instead of Click event
+            //console.log(map.getCenter());
+            //geocodeResult = map.getCenter().toString();
+            //var geoDataRequestOptions = {
+            //    entityType: 'AdminDivision1',
+            //    lod: 1,
+            //    getAllPolygons: true
+            //};
+            //Microsoft.Maps.loadModule('Microsoft.Maps.SpatialDataService', function () {
+            //    Microsoft.Maps.SpatialDataService.GeoDataAPIManager.getBoundary(
+            //        geocodeResult,
+            //        geoDataRequestOptions,
+            //        'Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO',
+            //        function (data) {
+            //            //Add the polygons to the map.
+            //            if (data.results && data.results.length > 0) {
+            //                console.log(data.results[0].Polygons);
+            //            } else {
+            //            }
+            //        });
+            //});
+
+            //Get the current zoom level of the map.
+            var zoom = map.getZoom();
+            var layer;
+            //Loop through the layers in the map and check to see if it has zoomRange metadata.
+            for (var i = 0; i < map.layers.length; i++) {
+                layer = map.layers[i];
+                if (layer.metadata && layer.metadata.zoomRange) {
+                    if (zoom >= layer.metadata.zoomRange.min && zoom <= layer.metadata.zoomRange.max) {
+                        layer.setVisible(true);
+                    } else {
+                        layer.setVisible(false);
+                    }
+                }
+            }
+        }
+
+        function Hovered(e) {
+            //Hide the infobox
+            // infobox.setOptions({ visible: false });
+            //Make sure the infobox has metadata to display.
+            if (e.target.metadata) {
+                //Set the infobox options with the metadata of the pushpin.
+                tooltip.setOptions({
+                    location: e.location,
+                    htmlContent: tooltipTemplate.replace('{title}', " State: \
+                               <b>" + e.target.jsondata.State + '</b></br>' + "Permits: <b>" + e.target.jsondata.CountValue + "</b>"),
+                    visible: true
+                });
+                e.target.setOptions({
+                    // fillColor: 'yellow',
+                    strokeColor: 'grey',
+                    strokeThickness: 3,
+                    strokeDashArray: "0",
+
+                });
+            }
+        }
+        function Hout(e) {
+            //Close the tooltip and clear its content.
+            tooltip.setOptions({ visible: false });
+            e.primitive.setOptions({ strokeColor: 'white', strokeThickness: 1, strokeDashArray: "1 4 2 1" });
+
+        }
+
+
+        function createLegend(maxValue) {
+            document.getElementById('divlegend').hidden = true;
+            var canvas = document.getElementById('legendCanvas');
+            var ctx = canvas.getContext('2d');
+            //Create a linear gradient for the legend.
+            var colorGradient = {
+                //"0.00": 'rgba(0,255,0,0.6)',    // Green
+                //"0.50": 'rgba(255,255,0,255)',  // Yellow
+                //  "0.50": 'rgba(0,0,255,0.5)',  // Blue
+                //"1.00": 'rgba(255,0,0,255)'     // Red
+                //   "1.00": 'rgba(255,0,255,0)'     //pink
+                //    rgba(0,0,255,0.5); //blue
+                //    rgba(192,192,192)  //grey
+
+                "0.00": 'rgba(255,0,0 ,1)',
+                "0.25": 'rgba(255,255,0 ,1)',
+                "0.75": 'rgba(139,0,139 ,1)',
+                "1.00": 'rgba(0,0,128 ,1)'
+
+                //   "0.00": 'rgba(244,255,129 ,1)',
+                ////  "0.25": 'rgba(255,255,0 ,1)',
+                //  "0.75": 'rgba(30,136,229 ,1)',
+                //  "1.00": 'rgba(63,81,181,1)'
+
+
+            };
+            var grd = ctx.createLinearGradient(0, 0, 256, 0);
+            for (var c in colorGradient) {
+                grd.addColorStop(c, colorGradient[c]);
+            }
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            //Store the pixel information from the legend.
+            heatGradientData = ctx.getImageData(0, 0, canvas.width, 1);
+        }
+        function getLegendColor(value, maxValue) {
+            value = (value > maxValue) ? maxValue : value;
+            //Calculate the pixel data index from the ratio of value/maxValue.
+            var idx = Math.round((value / maxValue) * 256) * 4 - 4;
+            if (idx < 0) {
+                idx = 0;
+            }
+            //Create an RGBA color from the pixel data at the calculated index.
+            return 'rgba(' + heatGradientData.data[idx] + ',' +
+                heatGradientData.data[idx + 1] + ',' +
+                heatGradientData.data[idx + 2] + ',' + '0.6)';
+        }
+        function getLegendColor1(val) {
+            if (val >= 20) {
+                return 'rgba(63,81,181,1)';
+            } else if (val >= 15) {
+                return 'rgba(121,134,203 ,1)';
+            } else if (val >= 10) {
+                return 'rgba(48,63,159 ,1)';
+            } else if (val >= 5) {
+                return 'rgba(83,109,254 ,1)';
+            } else {
+                return 'rgba(250,250,250 ,0.5)';
+            }
+        }
+        function getLegendColor2(val) {
+            if (val >= 20) {
+                return 'rgba(130,119,23 ,1)';
+            } else if (val >= 15) {
+                return 'rgba(192,202,51 ,1)';
+            } else if (val >= 10) {
+                return 'rgba(212,225,87 ,1)';
+            } else if (val >= 5) {
+                return 'rgba(230,238,156 ,1)';
+            } else {
+                return 'rgba(240,244,195 ,0.5)';
+            }
+        }
+
+        function drillup() {
+            var zoom = map.getZoom();
+            var layer;
+            if (map.getZoom() >= 5 && map.getZoom() <= 8) {
+
+                map.setView({
+                    //   center: new Microsoft.Maps.Location(map.layers[1].metadata.Latitude, map.layers[1].metadata.Longitude),
+                    center: new Microsoft.Maps.Location(35.23, -96.71),
+                    zoom: 4
+                });
+            }
+            else if (map.getZoom() >= 8 && map.getZoom() <= 13) {
+
+                map.setView({
+                    //   center: new Microsoft.Maps.Location(map.layers[1].metadata.Latitude, map.layers[1].metadata.Longitude),
+                    //  center: new Microsoft.Maps.Location(map.layers[1].metadata.Latitude, map.layers[1].metadata.Longitude),
+                    zoom: 6
+                });
+            }
+        }
+
+
+        function resize() {
+            var mapDiv = document.getElementById('myMap');
+            mapDiv.style.width = 500 + 'px';
+            mapDiv.style.height = 300 + 'px';
+        }
+        function resize1() {
+            var mapDiv = document.getElementById('myMap');
+            mapDiv.style.width = 400 + 'px';
+            mapDiv.style.height = 300 + 'px';
+        }
+         function resize2() {
+            var mapDiv = document.getElementById('myMap');
+            mapDiv.style.width = 1200 + 'px';
+            mapDiv.style.height = 600 + 'px';
+        }
+
+
+    </script>
+    <script type='text/javascript' src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO' async defer></script>
+
+    <script type='text/javascript' src="FullScreenMap.js"></script>
+</head>
+<body>
+    <div class="mapContainer">
+        <!--<button onclick="loadJson()">Test JSON</button>-->
+        <div id="myMap"></div>
+        <div class="ButtonDrillUp">
+            <input type="button" value="Drill Up" onclick="drillup()" />
+        </div>
+        <div class="legend" id="divlegend">
+            <canvas id="legendCanvas"></canvas>
+            <span class="legend-min">0</span>
+            <span class="legend-max">10,000,000</span>
+        </div>
+    </div>
+    <input type="button" value="Resize" onclick="resize()" />
+    <input type="button" value="Resize1" onclick="resize1()" />
+    <input id="fullScreenToggle" type="button" value="Resize2" onclick="resize2()" />
+
+</body>
+</html>
