@@ -26,7 +26,7 @@
         function GetMap() {
             var bounds = new Microsoft.Maps.LocationRect.fromLocations(new Microsoft.Maps.Location(53.32, -110.29), new Microsoft.Maps.Location(76.44, -110.29));
             map = new Microsoft.Maps.Map('#myMap', {
-                //credentials: 'Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO',
+                credentials: 'Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO',
                 // center: new Microsoft.Maps.Location(51.86, -120.52),
                 center: new Microsoft.Maps.Location(35.23, -96.71),
                 mapTypeId: Microsoft.Maps.MapTypeId.mercator, //.mercator,
@@ -647,7 +647,7 @@
 
 
     </script>
-    <script type='text/javascript' src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO' async defer></script>
+    <script type='text/javascript' src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap' async defer></script>
 
     <script type='text/javascript' src="FullScreenMap.js"></script>
 </head>
