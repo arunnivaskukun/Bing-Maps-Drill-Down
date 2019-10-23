@@ -284,8 +284,8 @@
                                console.log(data.results[0].Polygons[i].jsondata.CountValue +" - " + CityMaxCount)
 
                                     data.results[0].Polygons[i].setOptions({
-                                        fillColor: getLegendColor1(data.results[0].Polygons[i].jsondata.CountValue / CityMaxCount),
-                                        //      fillColor: getLegendColor1(10000), //Devide the count by a million and get the legend color.
+                                        //fillColor: getLegendColor1(data.results[0].Polygons[i].jsondata.CountValue / CityMaxCount),
+                                        fillColor: getLegendColor(data.results[0].Polygons[i].jsondata.CountValue , CityMaxCount),
                                         strokeColor: 'Grey',
                                         strokeThickness: 1
                                     });
@@ -330,7 +330,7 @@
                                         
                                         selectedCity = e.target.jsondata.City;
 
-                                        getZipBoundary(e.target.geometry.boundingBox);
+                                        getZipBoundary(e.target.geometry.boundingBox,selectedCity);
                                         //   getZipBoundary(e.target.metadata.Boundary);
 
                                     });
@@ -479,7 +479,7 @@
             /** Zip START **/
 
 
-            function getZipBoundary(countyBounds) {
+            function getZipBoundary(countyBounds,selectedCity) {
                 layer3.clear();
 
                 //Load the Bing Spatial Data Services module.
@@ -501,14 +501,14 @@
                     };
                     console.log(map.getBounds());
                     //Trigger an initial search.
-                    QueryDataSource2(query);
+                    QueryDataSource2(query,selectedCity);
 
                 });
             }
-            function QueryDataSource2(query2) {
+            function QueryDataSource2(query2,selectedCity) {
                 //Process the query.
                 Microsoft.Maps.SpatialDataService.QueryAPIManager.search(query2, map, function (data, inlineCount) {
-                    var info2 = loadJson('zip');
+                    var info2 = loadJson('zip',selectedState, selectedCity);
 
                     ZipMaxCount=getZipMaxCount(); //Calls function from DataController.js
 
@@ -526,7 +526,8 @@
 
                         data[i].setOptions({
                             //   fillColor: getLegendColor2(data[i].metadata.Population, maxPopulation)
-                            fillColor: getLegendColor2(data[i].jsondata.CountValue / ZipMaxCount),
+                           // fillColor: getLegendColor2(data[i].jsondata.CountValue / ZipMaxCount),
+                           fillColor: getLegendColor(data[i].jsondata.CountValue, ZipMaxCount),
                             strokeColor: 'grey',
                             strokeThickness: 1,
                             //  strokeDashArray: "1 4 2 1"
@@ -744,11 +745,11 @@
         }
         function getLegendColor1(val) {
             //console.log(val);
-            if (val >= 20) {
+            if (val >= 5) {
                 return 'rgba(63,81,181,1)';
-            } else if (val >= 5) {
-                return 'rgba(121,134,203 ,1)';
             } else if (val >= 3) {
+                return 'rgba(121,134,203 ,1)';
+            } else if (val >= 2) {
                 return 'rgba(48,63,159 ,1)';
             } else if (val >= 1) {
                 return 'rgba(83,109,254 ,1)';
@@ -757,13 +758,13 @@
             }
         }
         function getLegendColor2(val) {
-            if (val >= 20) {
+            if (val >= 5) {
                 return 'rgba(130,119,23 ,1)';
-            } else if (val >= 15) {
+            } else if (val >= 3) {
                 return 'rgba(192,202,51 ,1)';
-            } else if (val >= 10) {
+            } else if (val >= 2) {
                 return 'rgba(212,225,87 ,1)';
-            } else if (val >= 5) {
+            } else if (val >= 1) {
                 return 'rgba(230,238,156 ,1)';
             } else {
                 return 'rgba(240,244,195 ,0.5)';
@@ -824,7 +825,7 @@
         <div class="legend" id="divlegend">
             <canvas id="legendCanvas"></canvas>
             <span class="legend-min">0</span>
-            <span class="legend-max">10,000,000</span>
+            <span class="legend-max">MaxCount</span>
         </div>
     </div>
     <input type="button" value="Resize" onclick="resize()" />

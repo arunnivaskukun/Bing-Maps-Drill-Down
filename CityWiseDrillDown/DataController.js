@@ -17,7 +17,7 @@ function getZipMaxCount() {
     return (typeof (zipMaxPermitCountByCity) != 'undefined') ? zipMaxPermitCountByCity : "0";
 }
 
-function loadJson(typeLocation, stateName) {
+function loadJson(typeLocation, stateName, cityName) {
 
     //include the   'async':false   parameter or the object data won't get captured when loading
     var json = $.getJSON({ 'url': "PermitData1.json", 'async': false });  //PermitData1.json  replace the url 
@@ -104,16 +104,23 @@ function loadJson(typeLocation, stateName) {
     }
     else {
         var result = obj1.reduce(function (res, obj) {
-            if (!(obj.zip_code in res))
-                res.__array.push(res[obj.zip_code] = obj);
-            else {
-                // res[obj.state].zip_code += obj.zip_code;
-                res[obj.zip_code].CountOfPermit += parseInt(obj.CountOfPermit);
+            if (obj.state.toLowerCase() == stateName.toLowerCase()) //additional filter on state level to avoid conflict of county name across state
+            {
+                if (obj.city.toLowerCase() == cityName.toLowerCase()) //additional filter on state level to avoid conflict of county name across state
+                {
+                    if (!(obj.zip_code in res))
+                        res.__array.push(res[obj.zip_code] = obj);
+                    else {
+                        // res[obj.state].zip_code += obj.zip_code;
+                        res[obj.zip_code].CountOfPermit += parseInt(obj.CountOfPermit);
+                    }
+                }
             }
             return res;
         }, { __array: [] }).__array
             .sort(function (a, b) { return b.CountOfPermit - a.CountOfPermit; });
 
+            console.log(result);
         var xxx = [];
         for (x in result) {
             xxx[x] = result[x].CountOfPermit;
@@ -122,6 +129,10 @@ function loadJson(typeLocation, stateName) {
         xxx.sort(function (a, b) { return a - b });
         // console.log(xxx[xxx.length-1]);  //Returns Max
         zipMaxPermitCountByCity = xxx[xxx.length - 1];
+
+      //  let sum = xxx.reduce((previous, current) => current += previous);  //Average finding
+      //  let avg = sum / xxx.length;
+      //  zipMaxPermitCountByCity=avg;
 
         return result;
     }
