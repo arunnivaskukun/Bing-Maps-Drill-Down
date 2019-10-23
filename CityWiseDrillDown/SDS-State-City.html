@@ -17,8 +17,8 @@
 
         var sdsgeodataurl = 'http://platform.bing.com/geo/spatial/v1/public/Geodata?SpatialFilter=GetBoundary';
 
-        var map, maxPopulation = 1000000, heatGradientData;
-        var StateMaxCount = 1000000, CountyMaxCount = 10000, CityMaxCount = 10000, ZipMaxCount = 1000;
+        var map, heatGradientData;
+        var StateMaxCount, CountyMaxCount, CityMaxCount, ZipMaxCount;
         var valueType = "Permits:";
         var selectedState, selectedCounty, selectedCity, selectedZip;
 
@@ -30,10 +30,10 @@
 
             var bounds = new Microsoft.Maps.LocationRect.fromLocations(new Microsoft.Maps.Location(53.32, -110.29), new Microsoft.Maps.Location(76.44, -110.29));
             map = new Microsoft.Maps.Map('#myMap', {
-                //credentials: 'Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO',
+                credentials: 'Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO',
                 // center: new Microsoft.Maps.Location(51.86, -120.52),
                 center: new Microsoft.Maps.Location(35.23, -96.71),
-                mapTypeId: Microsoft.Maps.MapTypeId.mercator, //.mercator,
+                mapTypeId: Microsoft.Maps.MapTypeId.mercator, //.mercator,grayscale
                 zoom: 4,
                 showLocateMeButton: false,
                 showMapTypeSelector: false,
@@ -91,7 +91,7 @@
 
 
             //Create a legend.
-            createLegend(maxPopulation);
+            createLegend();
 
             /** STATE START **/
             //Load the Bing Spatial Data Services module.
@@ -113,6 +113,8 @@
                 Microsoft.Maps.SpatialDataService.QueryAPIManager.search(queryOptions, map, function (data) {
                     //Loop through results and set the fill color of the polygons based on the population property.
                     var info = loadJson('state');
+
+                    StateMaxCount=getStateMaxCount(); //Calls function from DataController.js
 
                     for (var i = 0; i < data.length; i++) {
 
@@ -147,7 +149,7 @@
                             selectedState = "";
                             selectedState = e.target.metadata.Name;
 
-                            getCountyBoundary(e.target.metadata.Name,e.target.metadata.StateCode);
+                            getCityBoundary(e.target.metadata.Name,e.target.metadata.StateCode);
 
                             if (map.getZoom() < 6) {
                                 map.setView({
@@ -205,10 +207,10 @@
 
                 /** County START **/
 
-                function getCountyBoundary(stateName,stateCode) {  //Load the Bing Spatial Data Services module.
+                function getCityBoundary(stateName,stateCode) {  //Load the Bing Spatial Data Services module.
                     layer2.clear();
                     layer4.clear();
-
+                    
                     // ------- Newly added
                    //// var zipCodes = ['Los Angeles', 'Phoenix', 'atlanta', 'new york', 'dallas', 'san diego'];
                    // // var zipCodes = ['COOK, USA', 'LOS ANGELES, USA', 'DALLAS, USA', 'FULTON, USA', 'SAN DIEGO, USA', 'MIAMI-DADE, USA', 'CLARK, USA', 'SANTA CLARA, USA', 'DEKALB, USA', 'KAUFMAN, USA', 'VENTURA, USA', 'IROQUOIS, USA', 'DENTON, USA', 'MARION, USA', 'WILL, USA', 'ROCKWALL, USA', 'MADISON, USA', 'DU PAGE, USA', 'VOLUSIA, USA', 'CALHOUN, USA', 'BROWARD, USA', 'POLK, USA', 'COOKE, USA', 'SAN PATRICIO, USA', 'LIBERTY, USA', 'ALAMEDA, USA', 'COLLIN, USA', 'COLUMBIA, USA', 'HILLSBOROUGH, USA', 'SARASOTA, USA', 'LAKE, USA', 'AUSTIN, USA', 'GWINNETT, USA', 'CITRUS, USA', 'EL PASO, USA', 'SAN LUIS OBISPO, USA', 'YOLO, USA', 'ORANGE, USA', 'PALM BEACH, USA', 'OSCEOLA, USA', 'WICHITA, USA', 'ELLIS, USA', 'DE SOTO, USA', 'PUTNAM, USA', 'HIGHLANDS, USA', 'CAMERON, USA', 'GALVESTON, USA', 'COBB, USA', 'SAINT LUCIE, USA', 'FLOYD, USA', 'RICHMOND, USA', 'WINNEBAGO, USA', 'MEDINA, USA', 'WEBB, USA', 'MARTIN, USA', 'BRAZORIA, USA', 'PLACER, USA', 'SUMTER, USA', 'KANKAKEE, USA', 'MANATEE, USA', 'EFFINGHAM, USA', 'HARRIS, USA', 'HENDRY, USA', 'OGLE, USA', 'PINELLAS, USA', 'COFFEE, USA', 'HARDEE, USA', 'RABUN, USA', 'ESCAMBIA, USA', 'THOMAS, USA', 'TRAVIS, USA', 'SACRAMENTO, USA', 'DUVAL, USA', 'ALACHUA, USA', 'BRADFORD, USA', 'CLAYTON, USA', 'HABERSHAM, USA', 'KANE, USA', 'GRAYSON, USA', 'PASCO, USA', 'TAYLOR, USA', 'GUADALUPE, USA', 'WHITFIELD, USA', 'COLLIER, USA', 'CHATHAM, USA', 'GORDON, USA', 'PIKE, USA', 'YORK, USA', 'STARR, USA', 'BUTTE, USA', 'BEN HILL, USA', 'BUNCOMBE, USA', 'COLBERT, USA', 'MONROE, USA', 'NASSAU, USA', 'SAINT JOHNS, USA', 'CARBON, USA', 'CARROLL, USA', 'DAKOTA, USA', 'DELAWARE, USA', 'DISTRICT OF COLUMBIA, USA', 'FAYETTE, USA', 'JEFFERSON, USA', 'LEFLORE, USA', 'MCMINN, USA', 'MECKLENBURG, USA', 'MORGAN, USA', 'NEW YORK, USA', 'NEWPORT NEWS CITY, USA', 'POWELL, USA', 'FAIRFAX, USA', 'HARRISON, USA', 'HENNEPIN, USA', 'KALAMAZOO, USA', 'LARIMER, USA', 'MARICOPA, USA', 'POTTER, USA', 'UTAH, USA'];
@@ -225,7 +227,7 @@
                             if (data.results && data.results.length > 0) {
                                 for (var i = 0; i < data.results[0].Polygons.length; i++) {
                                 data.results[0].Polygons[i].setOptions({
-                                       // fillColor: 'Light Red',
+                                        fillColor: 'rgba(255, 255, 255, 0.5)', //'White',
                                         strokeColor: 'Red',
                                         strokeThickness: 1
                                     });
@@ -243,6 +245,9 @@
                        locsCity.push(info1[i].city);
                        console.log(info1[i].city);
                     }
+
+
+                    CityMaxCount=getCityMaxCount(); //Calls function from DataController.js
 
                  //   var locsCity = loadCityJsonFile(stateName,stateCode);
                     var geoDataRequestOptions = {
@@ -275,9 +280,12 @@
                                    City: data.results[0].Name.EntityName,
                                    CountValue: cityCounts
                                };
+
+                               console.log(data.results[0].Polygons[i].jsondata.CountValue +" - " + CityMaxCount)
+
                                     data.results[0].Polygons[i].setOptions({
                                         fillColor: getLegendColor1(data.results[0].Polygons[i].jsondata.CountValue / CityMaxCount),
-                                        //      fillColor: getLegendColor1(10000), //Devide the population by a million and get the legend color.
+                                        //      fillColor: getLegendColor1(10000), //Devide the count by a million and get the legend color.
                                         strokeColor: 'Grey',
                                         strokeThickness: 1
                                     });
@@ -502,6 +510,8 @@
                 Microsoft.Maps.SpatialDataService.QueryAPIManager.search(query2, map, function (data, inlineCount) {
                     var info2 = loadJson('zip');
 
+                    ZipMaxCount=getZipMaxCount(); //Calls function from DataController.js
+
                     for (var i = 0; i < data.length; i++) {
 
                         var zipLoc = getDataByLocation((data[i].metadata.Name).toLowerCase(), info2, 'zip');
@@ -689,30 +699,26 @@
         }
 
 
-        function createLegend(maxValue) {
-            document.getElementById('divlegend').hidden = true;
+        function createLegend() {
+            document.getElementById('divlegend').hidden = false;
             var canvas = document.getElementById('legendCanvas');
             var ctx = canvas.getContext('2d');
             //Create a linear gradient for the legend.
             var colorGradient = {
-                //"0.00": 'rgba(0,255,0,0.6)',    // Green
-                //"0.50": 'rgba(255,255,0,255)',  // Yellow
-                //  "0.50": 'rgba(0,0,255,0.5)',  // Blue
-                //"1.00": 'rgba(255,0,0,255)'     // Red
-                //   "1.00": 'rgba(255,0,255,0)'     //pink
-                //    rgba(0,0,255,0.5); //blue
-                //    rgba(192,192,192)  //grey
+                // "0.00": 'rgba(0,255,0,0.6)',    // Green
+                // "0.50": 'rgba(255,255,0,255)',  // Yellow
+                // "0.50": 'rgba(0,0,255,0.5)',  // Blue
+                // "1.00": 'rgba(255,0,0,255)'     // Red
+                // "1.00": 'rgba(255,0,255,0)'     //pink
+                // rgba(0,0,255,0.5); //blue
+                // rgba(192,192,192)  //grey
 
-                "0.00": 'rgba(255,0,0 ,1)',
-                "0.25": 'rgba(255,255,0 ,1)',
-                "0.75": 'rgba(139,0,139 ,1)',
-                "1.00": 'rgba(0,0,128 ,1)'
-
-                //   "0.00": 'rgba(244,255,129 ,1)',
-                ////  "0.25": 'rgba(255,255,0 ,1)',
-                //  "0.75": 'rgba(30,136,229 ,1)',
-                //  "1.00": 'rgba(63,81,181,1)'
-
+               "0.00": 'rgba(255,0,0 ,1)',    // Red
+               "0.25": 'rgba(255,255,0 ,1)',  // Yellow
+              // "0.25": 'rgba(0,0,255,0.5)',  // Blue
+              // "0.50": 'rgba(255,255,0,1)',  //Light Green
+              // "0.75": 'rgba(139,0,139 ,1)',
+               "1.00": 'rgba(100,221,23 ,1)'   // Green
 
             };
             var grd = ctx.createLinearGradient(0, 0, 256, 0);
@@ -734,19 +740,20 @@
             //Create an RGBA color from the pixel data at the calculated index.
             return 'rgba(' + heatGradientData.data[idx] + ',' +
                 heatGradientData.data[idx + 1] + ',' +
-                heatGradientData.data[idx + 2] + ',' + '0.6)';
+                heatGradientData.data[idx + 2] + ',' + '0.7)';
         }
         function getLegendColor1(val) {
+            //console.log(val);
             if (val >= 20) {
                 return 'rgba(63,81,181,1)';
-            } else if (val >= 15) {
-                return 'rgba(121,134,203 ,1)';
-            } else if (val >= 10) {
-                return 'rgba(48,63,159 ,1)';
             } else if (val >= 5) {
+                return 'rgba(121,134,203 ,1)';
+            } else if (val >= 3) {
+                return 'rgba(48,63,159 ,1)';
+            } else if (val >= 1) {
                 return 'rgba(83,109,254 ,1)';
             } else {
-                return 'rgba(250,250,250 ,0.5)';
+                return 'rgba(255,0,0,255)';
             }
         }
         function getLegendColor2(val) {
@@ -803,7 +810,7 @@
 
 
     </script>
-    <script type='text/javascript' src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=Aly7aBgXtLEnp2coxZCbd4DfAYIaY0_3Rceh0RDh_qVkt1ooUszzfra-M_yXKeRO' async defer></script>
+    <script type='text/javascript' src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap' async defer></script>
 
     <script type='text/javascript' src="FullScreenMap.js"></script>
 </head>

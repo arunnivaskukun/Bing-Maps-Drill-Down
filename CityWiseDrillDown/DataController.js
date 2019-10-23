@@ -4,6 +4,19 @@ var imported = document.createElement("script");
 imported.src = "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js";
 document.getElementsByTagName("head")[0].appendChild(imported);
 
+
+var stateMaxPermitCount, cityMaxPermitCountByState, zipMaxPermitCountByCity;
+
+function getStateMaxCount() {
+    return (typeof (stateMaxPermitCount) != 'undefined') ? stateMaxPermitCount : "0";
+}
+function getCityMaxCount() {
+    return (typeof (cityMaxPermitCountByState) != 'undefined') ? cityMaxPermitCountByState : "0";
+}
+function getZipMaxCount() {
+    return (typeof (zipMaxPermitCountByCity) != 'undefined') ? zipMaxPermitCountByCity : "0";
+}
+
 function loadJson(typeLocation, stateName) {
 
     //include the   'async':false   parameter or the object data won't get captured when loading
@@ -31,22 +44,21 @@ function loadJson(typeLocation, stateName) {
 
         //  console.log(result);
 
-        var x;
         var xxx = [];
-
         for (x in result) {
-            //  document.getElementById("demo").innerHTML += result[x].county + "--" + result[x].CountOfPermit + "<br>";
-            xxx[x] = result[x].state;
-            //   document.getElementById("demo").innerHTML += xxx[x];
+            xxx[x] = result[x].CountOfPermit;  // xxx[x] = result[x].state; -->to collect all states
         }
         // console.log(xxx);
+        xxx.sort(function (a, b) { return a - b });
+        // console.log(xxx[xxx.length-1]);  //Returns Max
+        stateMaxPermitCount = xxx[xxx.length - 1];
 
         return result;
     }
     else if (typeLocation == "county") {
 
         var result = obj1.reduce(function (res, obj) {
-            if (obj.state === stateName.toLowerCase()) //additional filter on state level to avoid conflict of county name across state
+            if (obj.state.toLowerCase() == stateName.toLowerCase()) //additional filter on state level to avoid conflict of county name across state
             {
                 if (!(obj.county in res)) {
                     res.__array.push(res[obj.county] = obj);
@@ -65,7 +77,7 @@ function loadJson(typeLocation, stateName) {
     else if (typeLocation == "city") {
 
         var result = obj1.reduce(function (res, obj) {
-            if (obj.state === stateName.toLowerCase()) //additional filter on state level to avoid conflict of county name across state
+            if (obj.state.toLowerCase() == stateName.toLowerCase()) //additional filter on state level to avoid conflict of county name across state
             {
                 if (!(obj.city in res)) {
                     res.__array.push(res[obj.city] = obj);
@@ -79,6 +91,15 @@ function loadJson(typeLocation, stateName) {
         }, { __array: [] }).__array
             .sort(function (a, b) { return b.CountOfPermit - a.CountOfPermit; });
 
+        console.log(result);
+        var xxx=[];
+        for (x in result) {
+            xxx[x] = result[x].CountOfPermit;
+        }
+       // console.log(xxx);
+        xxx.sort(function(a, b){return a-b});
+        // console.log(xxx[xxx.length-1]);  //Returns Max
+        cityMaxPermitCountByState=xxx[xxx.length-1];
         return result;
     }
     else {
@@ -92,6 +113,15 @@ function loadJson(typeLocation, stateName) {
             return res;
         }, { __array: [] }).__array
             .sort(function (a, b) { return b.CountOfPermit - a.CountOfPermit; });
+
+        var xxx = [];
+        for (x in result) {
+            xxx[x] = result[x].CountOfPermit;
+        }
+        // console.log(xxx);
+        xxx.sort(function (a, b) { return a - b });
+        // console.log(xxx[xxx.length-1]);  //Returns Max
+        zipMaxPermitCountByCity = xxx[xxx.length - 1];
 
         return result;
     }
